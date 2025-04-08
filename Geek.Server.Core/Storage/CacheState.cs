@@ -1,12 +1,9 @@
-﻿using Geek.Server.Core.Serialize;
-using MessagePack;
-using MongoDB.Bson.Serialization.Attributes;
+﻿using MongoDB.Bson.Serialization.Attributes;
 using NLog;
 
 namespace Geek.Server.Core.Storage
 {
 
-    [MessagePackObject(true)]
     [BsonIgnoreExtraElements(true,Inherited =true)]
     public abstract class CacheState
     {
@@ -121,7 +118,8 @@ namespace Geek.Server.Core.Storage
             try
             {
                 var hashSteam = new HashStream();
-                Serializer.Serialize(hashSteam, State);
+                // TODO 更换序列化
+                // Serializer.Serialize(hashSteam, State);
                 return new UInt128(hashSteam.hash, (ulong)hashSteam.Position);
             }
             catch (Exception e)

@@ -7,7 +7,7 @@ namespace Server.Logic.Logic.Role.Bag
     {
         public override async Task ActionAsync()
         {
-            await Comp.ComposePet(Msg as ReqComposePet);
+            await Comp.ComposePet(Msg);
         }
     }
 }

@@ -1,8 +1,5 @@
 ﻿using Geek.Server.Core.Hotfix;
-using Geek.Server.Core.Serialize;
-using MessagePack;
 using Microsoft.AspNetCore.Connections;
-using SharpCompress.Writers;
 using System.Buffers;
 using System.IO.Pipelines;
 
@@ -22,7 +19,15 @@ namespace Geek.Server.Core.Net.Tcp
 
         protected long lastReviceTime = 0;
         protected int lastOrder = 0;
-        const int MAX_RECV_SIZE = 1024 * 1024 * 5; /// 从客户端接收的包大小最大值（单位：字节 5M）
+
+        // 批量处理的消息数量
+        private const int BATCH_SIZE = 20;
+
+        /// 从客户端接收的包大小最大值（单位：字节 5M）
+        private const int MAX_RECV_SIZE = 1024 * 1024 * 5;
+        
+        // 消息头长度(数据长度+时间戳+magic+msgId)
+        private const int HEADER_LEN = 20;
 
         public TcpChannel(ConnectionContext context, Func<Message, Task> onMessage = null)
         {
@@ -48,7 +53,6 @@ namespace Geek.Server.Core.Net.Tcp
                 var token = Context.ConnectionClosed;
                 while (!token.IsCancellationRequested)
                 {
-
                     var result = await Reader.ReadAsync(token);
                     var buffer = result.Buffer;
                     try
@@ -60,12 +64,14 @@ namespace Geek.Server.Core.Net.Tcp
                         while (TryParseMessage(ref buffer, out var msg))
                         {
                             await onMessage?.Invoke(msg);
-                            if (++count > 20)
+                            if (++count > BATCH_SIZE)
                             {
                                 await Task.Yield();
                                 count = 0;
                             }
-                        };
+                        }
+
+                        ;
                         if (result.IsCompleted)
                         {
                             break;
@@ -122,59 +128,49 @@ namespace Geek.Server.Core.Net.Tcp
 
         protected virtual bool TryParseMessage(ref ReadOnlySequence<byte> input, out Message msg)
         {
-            msg = default;
-            var bufEnd = input.End;
+            msg = Message.Create();
             var reader = new SequenceReader<byte>(input);
 
-            if (!reader.TryReadBigEndian(out int msgLen))
-            {
+            // 1. 读取消息头（4字节长度）
+            if (!reader.TryReadBigEndian(out int msgLen) || !CheckMsgLen(msgLen))
                 return false;
-            }
 
-            if (!CheckMsgLen(msgLen))
-            {
-                throw new Exception("消息长度异常");
-            }
-
+            // 2. 校验剩余数据是否足够（总长度 - 已读的4字节长度）
             if (reader.Remaining < msgLen - 4)
+                return false;
+
+            // 3. 读取元数据（8字节时间戳 + 4字节order + 4字节消息ID）
+            if (!reader.TryReadBigEndian(out long time) ||
+                !reader.TryReadBigEndian(out int order) ||
+                !reader.TryReadBigEndian(out int msgId))
             {
                 return false;
             }
 
-            var payload = input.Slice(reader.Position, msgLen - 4);
-
-
-            reader.TryReadBigEndian(out long time);
-            if (!CheckTime(time))
+            // 4. 业务校验（时间戳 + 顺序号 + 消息ID）
+            if (!CheckTime(time) || !CheckMagicNumber(order, msgLen) || !HotfixMgr.IsMsgContain(msgId))
             {
-                throw new Exception("消息接收时间错乱");
+                LOGGER.Error($"消息校验失败 time:{time} order:{order} msgId:{msgId}");
+                throw new Exception("消息格式异常");
             }
 
-            reader.TryReadBigEndian(out int order);
-            if (!CheckMagicNumber(order, msgLen))
+            // 5. 读取消息体（总长度 - 头部长度）
+            int bodyLen = msgLen - HEADER_LEN;
+            if (bodyLen < 0)
             {
-                throw new Exception("消息order错乱");
+                LOGGER.Error($"消息长度异常 msgLen:{msgLen}");
+                return false;
             }
 
-            reader.TryReadBigEndian(out int msgId);
+            msg.Body = input.Slice(reader.Position, bodyLen).ToArray();
+            msg.MsgId = msgId;
+            msg.UniId = order;
 
-            var msgType = HotfixMgr.GetMsgType(msgId);
-            if (msgType == null)
-            {
-                LOGGER.Error("消息ID:{} 找不到对应的Msg.", msgId);
-            }
-            else
-            {
-                var message = Serializer.Deserialize<Message>(payload.Slice(16));
-                if (message.MsgId != msgId)
-                {
-                    throw new Exception($"解析消息错误，注册消息id和消息无法对应.real:{message.MsgId}, register:{msgId}");
-                }
-                msg = message;
-            }
+            // 6. 移动读取位置
             input = input.Slice(input.GetPosition(msgLen));
             return true;
         }
+
 
         public bool CheckMagicNumber(int order, int msgLen)
         {
@@ -186,6 +182,7 @@ namespace Geek.Server.Core.Net.Tcp
                 LOGGER.Error("包序列出错, order=" + order + ", lastOrder=" + lastOrder);
                 return false;
             }
+
             lastOrder = order;
             return true;
         }
@@ -197,11 +194,9 @@ namespace Geek.Server.Core.Net.Tcp
         /// <returns></returns>
         public bool CheckMsgLen(int msgLen)
         {
-            //消息长度+时间戳+magic+消息id+数据
-            //4 + 8 + 4 + 4 + data
-            if (msgLen <= 16)//(消息长度已经被读取)
+            if (msgLen < HEADER_LEN-4)
             {
-                LOGGER.Error("从客户端接收的包大小异常:" + msgLen + ":至少16个字节");
+                LOGGER.Error($"消息头不完整，长度:{msgLen}");
                 return false;
             }
             else if (msgLen > MAX_RECV_SIZE)
@@ -209,13 +204,13 @@ namespace Geek.Server.Core.Net.Tcp
                 LOGGER.Error("从客户端接收的包大小超过限制：" + msgLen + "字节，最大值：" + MAX_RECV_SIZE / 1024 + "字节");
                 return false;
             }
+
             return true;
         }
 
         /// <summary>
         /// 时间戳检查(可以防止客户端游戏过程中修改时间)
         /// </summary>
-        /// <param name="context"></param>
         /// <param name="time"></param>
         /// <returns></returns>
         public bool CheckTime(long time)
@@ -225,6 +220,7 @@ namespace Geek.Server.Core.Net.Tcp
                 LOGGER.Error("时间戳出错，time=" + time + ", lastTime=" + lastReviceTime);
                 return false;
             }
+
             lastReviceTime = time;
             return true;
         }
@@ -233,11 +229,13 @@ namespace Geek.Server.Core.Net.Tcp
         {
             if (IsClose())
                 return;
-            var bytes = Serializer.Serialize(msg);
-            int len = 8 + bytes.Length;
+            var bytes = msg.Body;
+            int len = HEADER_LEN + bytes.Length;
             Span<byte> span = stackalloc byte[len];
             int offset = 0;
             span.WriteInt(len, ref offset);
+            span.WriteLong(DateTime.Now.Ticks, ref offset);
+            span.WriteInt(msg.UniId, ref offset);
             span.WriteInt(msg.MsgId, ref offset);
             span.WriteBytesWithoutLength(bytes, ref offset);
 
@@ -266,19 +264,24 @@ namespace Geek.Server.Core.Net.Tcp
                 }
                 catch
                 {
-
                 }
 
                 try
                 {
                     Context.Abort();
                 }
-                catch { }
+                catch
+                {
+                }
+
                 try
                 {
                     Context.DisposeAsync();
                 }
-                catch { }
+                catch
+                {
+                }
+
                 Context = null;
             }
         }

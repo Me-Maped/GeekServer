@@ -46,26 +46,26 @@ namespace Geek.Server.Config
 			return map;
 		}
 		
-        t_testContainer t_testContainer = new t_testContainer();
-        t_test2Container t_test2Container = new t_test2Container();
-        t_languageContainer t_languageContainer = new t_languageContainer();
-        t_itemContainer t_itemContainer = new t_itemContainer();
+        // t_testContainer t_testContainer = new t_testContainer();
+        // t_test2Container t_test2Container = new t_test2Container();
+        // t_languageContainer t_languageContainer = new t_languageContainer();
+        // t_itemContainer t_itemContainer = new t_itemContainer();
 		//@%@%@
 		private GameDataManager()
 		{
-			t_containerMap.Add(t_testContainer.BinType, t_testContainer);
-			t_containerMap.Add(t_test2Container.BinType, t_test2Container);
-			t_containerMap.Add(t_languageContainer.BinType, t_languageContainer);
-			t_containerMap.Add(t_itemContainer.BinType, t_itemContainer);
+			// t_containerMap.Add(t_testContainer.BinType, t_testContainer);
+			// t_containerMap.Add(t_test2Container.BinType, t_test2Container);
+			// t_containerMap.Add(t_languageContainer.BinType, t_languageContainer);
+			// t_containerMap.Add(t_itemContainer.BinType, t_itemContainer);
 			//@#@#@
 		}
 		
 		public void LoadAll(bool forceReload = false)
 		{
-			LoadOneBean(t_testContainer.BinType, forceReload);
-			LoadOneBean(t_test2Container.BinType, forceReload);
-			LoadOneBean(t_languageContainer.BinType, forceReload);
-			LoadOneBean(t_itemContainer.BinType, forceReload);
+			// LoadOneBean(t_testContainer.BinType, forceReload);
+			// LoadOneBean(t_test2Container.BinType, forceReload);
+			// LoadOneBean(t_languageContainer.BinType, forceReload);
+			// LoadOneBean(t_itemContainer.BinType, forceReload);
 			//@*@*@
 		}
 		
@@ -191,12 +191,13 @@ namespace Geek.Server.Config
 
 	public static class ConfigExtension
 	{
-		public static string GetItsLanaugeStr(this int id, string defaultStr = "")
-		{
-			var bean = ConfigBean.GetBean<t_languageBean, int>(id);
-			if(bean != null)
-				return bean.t_content;
-			return defaultStr;
-		}
+		// TODO remove
+		// public static string GetItsLanaugeStr(this int id, string defaultStr = "")
+		// {
+		// 	var bean = ConfigBean.GetBean<t_languageBean, int>(id);
+		// 	if(bean != null)
+		// 		return bean.t_content;
+		// 	return defaultStr;
+		// }
 	}
 }

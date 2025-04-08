@@ -2,9 +2,7 @@
 using Geek.Server.App.Common.Event;
 using Geek.Server.Core.Actors;
 using Geek.Server.Core.Events;
-using Geek.Server.Core.Net.BaseHandler;
 using Geek.Server.Proto;
-using NLog;
 
 namespace Geek.Server.App.Common.Session
 {
@@ -53,12 +51,7 @@ namespace Geek.Server.App.Common.Session
             {
                 if (oldSession.Sign != session.Sign)
                 {
-                    var msg = new ResPrompt
-                    {
-                        Type = 5,
-                        Content = "你的账号已在其他设备上登陆"
-                    };
-                    oldSession.WriteAsync(msg);
+                    oldSession.WriteAsync(Message.Create(new ResPrompt { Type = 5, Content = "你的账号已在其他设备上登陆" }));
                 }
                 // 新连接 or 顶号
                 oldSession.Channel.RemoveData(SESSIONID);

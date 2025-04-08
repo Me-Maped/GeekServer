@@ -1,7 +1,5 @@
 ﻿using Geek.Server.App.Common;
-using Geek.Server.Core.Storage;
 using Geek.Server.Core.Utils;
-using Geek.Server.Proto;
 using NLog;
 using System.Diagnostics;
 using System.Text;
@@ -19,7 +17,6 @@ namespace Geek.Server.App
             try
             {
                 AppExitHandler.Init(HandleExit);
-
                 GameLoopTask = AppStartUp.Enter();
                 await GameLoopTask;
                 if (ShutDownTask != null)
@@ -27,10 +24,9 @@ namespace Geek.Server.App
             }
             catch (Exception e)
             {
-                string error;
                 if (Settings.AppRunning)
                 {
-                    error = $"服务器运行时异常 e:{e}";
+                    string error = $"服务器运行时异常 e:{e}";
                     Console.WriteLine(error);
                     File.WriteAllText("server_error.txt", $"{e}", Encoding.UTF8);
                 } 

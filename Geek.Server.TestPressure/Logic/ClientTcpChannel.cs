@@ -1,6 +1,4 @@
 ﻿using Geek.Server.Core.Net;
-using Geek.Server.Core.Serialize;
-using MessagePack;
 using System.Buffers;
 using System.IO.Pipelines;
 using System.Net.Sockets;
@@ -92,22 +90,18 @@ namespace Geek.Server.TestPressure.Logic
 
             //消息id
             reader.TryReadBigEndian(out int msgId);
-            var msgType = MsgFactory.GetType(msgId);
-            if (msgType == null)
+            if (!PBHelper.Contain(msgId))
             {
                 LOGGER.Error($"消息ID:{msgId} 找不到对应的Msg.");
             }
             else
             {
-                var message = MessagePackSerializer.Deserialize<Message>(payload.Slice(4));
+                var message = Message.Create();
+                message.MsgId = msgId;
+                message.Body = payload.Slice(4).ToArray();
 #if UNITY_EDITOR
                 Debug.Log("收到消息:" + MessagePackSerializer.SerializeToJson(message));
 #endif
-                if (message.MsgId != msgId)
-                {
-                    throw new Exception($"解析消息错误，注册消息id和消息无法对应.real:{message.MsgId}, register:{msgId}");
-                }
-
                 onMessage(message);
             }
             input = input.Slice(input.GetPosition(length));
@@ -120,7 +114,7 @@ namespace Geek.Server.TestPressure.Logic
         {
             if (IsClose())
                 return;
-            var bytes = Serializer.Serialize(msg);
+            var bytes = msg.Body;
             int len = 4 + 8 + 4 + 4 + bytes.Length;
             Span<byte> target = stackalloc byte[len];
 

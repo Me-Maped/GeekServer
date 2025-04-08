@@ -5,7 +5,6 @@ using Geek.Server.Core.Storage;
 using Geek.Server.Proto;
 using NLog;
 using NLog.Config;
-using PolymorphicMessagePack;
 
 namespace Geek.Server.App.Common
 {
@@ -56,9 +55,10 @@ namespace Geek.Server.App.Common
                 LogManager.Configuration = new XmlLoggingConfiguration("Configs/app_log.config");
                 LogManager.AutoShutdown = false;
 
-                PolymorphicTypeMapper.Register(typeof(AppStartUp).Assembly); //app
-                PolymorphicRegister.Load();
-                PolymorphicResolver.Instance.Init(); 
+                // TODO remove
+                // PolymorphicTypeMapper.Register(typeof(AppStartUp).Assembly); //app
+                // PolymorphicRegister.Load();
+                // PolymorphicResolver.Instance.Init(); 
 
                 //mongodb bson
                 BsonClassMapHelper.SetConvention();

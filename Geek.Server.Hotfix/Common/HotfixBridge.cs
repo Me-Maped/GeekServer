@@ -10,7 +10,6 @@ using Geek.Server.Core.Net.Websocket;
 using Geek.Server.Core.Timer;
 using Geek.Server.Core.Utils;
 using Microsoft.AspNetCore.Connections;
-using PolymorphicMessagePack;
 
 namespace Server.Logic.Common
 {
@@ -27,8 +26,10 @@ namespace Server.Logic.Common
                 ActorMgr.ClearAgent();
                 return true;
             }
-            PolymorphicTypeMapper.Register(this.GetType().Assembly);
-            HotfixMgr.SetMsgGetter(MsgFactory.GetType);
+            // TODO remove
+            // PolymorphicTypeMapper.Register(this.GetType().Assembly);
+            HotfixMgr.SetMsgGetter(PBHelper.Get);
+            HotfixMgr.SetMsgContainer(PBHelper.Contain);
 
             await TcpServer.Start(Settings.TcpPort, builder => builder.UseConnectionHandler<AppTcpConnectionHandler>());
             await WebSocketServer.Start(Settings.WebSocketUrl, new AppWebSocketConnectionHandler());

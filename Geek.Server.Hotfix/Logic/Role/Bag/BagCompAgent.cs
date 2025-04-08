@@ -29,17 +29,16 @@ namespace Server.Logic.Logic.Role.Bag
             return res;
         }
 
-        public async Task GetBagInfo(ReqBagInfo reqMsg)
+        public async Task GetBagInfo(Message reqMsg)
         {
-            var ret = BuildInfoMsg();
-            await this.NotifyClient(ret, reqMsg.UniId);
+            await this.NotifyClient(Message.Create(BuildInfoMsg()), reqMsg.UniId);
         }
 
         /// <summary>
         /// 宠物合成
         /// </summary>
         /// <returns></returns>
-        public async Task ComposePet(ReqComposePet reqMsg)
+        public async Task ComposePet(Message reqMsg)
         {
             //宠物碎片合成相关逻辑
             //.....
@@ -50,7 +49,7 @@ namespace Server.Logic.Logic.Role.Bag
 
             var res = new ResComposePet();
             res.PetId = 1000;
-            await this.NotifyClient(res, reqMsg.UniId);
+            await this.NotifyClient(Message.Create(res), reqMsg.UniId);
         }
 
 

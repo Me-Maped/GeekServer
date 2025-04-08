@@ -8,7 +8,7 @@ namespace Server.Logic.Logic.Login
     {
         public override async Task ActionAsync()
         {
-            await Comp.OnLogin(Channel, Msg as ReqLogin);
+            await Comp.OnLogin(Channel, Msg);
         }
     }
 }

@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.DataProtection;
 using Newtonsoft.Json;
 using System.Net.Sockets;
 using System.Net.WebSockets;
+using ReqBagInfo = Geek.Server.Proto.ReqBagInfo;
 
 namespace Geek.Server.TestPressure.Logic
 {
@@ -90,17 +91,17 @@ namespace Geek.Server.TestPressure.Logic
             req.UserName = "name" + id;
             req.Device = new Random().NextInt64().ToString();
             req.Platform = "android";
-            return SendMsgAndWaitBack(req);
+            return SendMsgAndWaitBack(Message.Create(req));
         }
 
         private Task ReqBagInfo()
         {
-            return SendMsgAndWaitBack(new ReqBagInfo());
+            return SendMsgAndWaitBack(Message.Create(new ReqBagInfo()));
         }
 
         private Task ReqComposePet()
         {
-            return SendMsgAndWaitBack(new ReqComposePet() { FragmentId = 1000 });
+            return SendMsgAndWaitBack(Message.Create(new ReqComposePet{ FragmentId = 1000 }));
         }
          
         async Task<bool> SendMsgAndWaitBack(Message msg)
@@ -116,11 +117,11 @@ namespace Geek.Server.TestPressure.Logic
 
         public void OnRevice(Message msg)
         {
-            Log.Info($"收到消息:{msg.MsgId} {MsgFactory.GetType(msg.MsgId)}"); 
+            Log.Info($"收到消息:{msg.MsgId} {PBHelper.GetType(msg.MsgId)}"); 
 
-            if (msg.MsgId == ResErrorCode.MsgID)
+            if (msg.MsgId == CMD.ResErrorCode)
             {
-                ResErrorCode errMsg = (ResErrorCode)msg;
+                ResErrorCode errMsg = msg.Deserialize<ResErrorCode>();
                 switch (errMsg.ErrCode)
                 {
                     case (int)ServerErrorCode.Success:

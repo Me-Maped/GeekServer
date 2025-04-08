@@ -104,15 +104,27 @@ namespace Geek.Server.Core.Hotfix
             return module.GetHttpHandler(cmd);
         }
 
-        static Func<int, Type> msgGetter;
-        public static void SetMsgGetter(Func<int, Type> msgGetter)
+        static Func<Type,int> msgGetter;
+        public static void SetMsgGetter(Func<Type, int> msgGetter)
         {
             HotfixMgr.msgGetter = msgGetter;
         }
 
-        public static Type GetMsgType(int msgId)
+        public static int GetMsgCmd(Type msgType)
         {
-            return msgGetter(msgId);
+            return msgGetter(msgType);
+        }
+        
+        static Func<int,bool> msgContainer;
+
+        public static void SetMsgContainer(Func<int, bool> msgContainer)
+        {
+            HotfixMgr.msgContainer = msgContainer;
+        }
+
+        public static bool IsMsgContain(int msgId)
+        {
+            return msgContainer(msgId);
         }
 
         public static List<IEventListener> FindListeners(ActorType actorType, int evtId)

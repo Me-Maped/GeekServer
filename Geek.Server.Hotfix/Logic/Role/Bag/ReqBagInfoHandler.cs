@@ -7,7 +7,7 @@ namespace Server.Logic.Logic.Role.Bag
     {
         public override async Task ActionAsync()
         {
-            await Comp.GetBagInfo(Msg as ReqBagInfo);
+            await Comp.GetBagInfo(Msg);
         }
     }
 }

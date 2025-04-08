@@ -1,6 +1,6 @@
 ﻿{
   "IsDebug": true,
-  "ServerId": 1001, //[1000,9999]
+  "ServerId": 1001,
   "ServerName": "geek_server",
   "LocalIp": "192.168.0.99",
   "TcpPort": 8899,

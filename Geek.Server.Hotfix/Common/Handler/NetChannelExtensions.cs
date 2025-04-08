@@ -21,7 +21,9 @@ public static class NetChannelExtensions
                 ErrCode = (int)code,
                 Desc = desc
             };
-            channel.Write(res);
+            var message = Message.Create(res);
+            message.UniId = uniId;
+            channel.Write(message);
         }
     }
 }

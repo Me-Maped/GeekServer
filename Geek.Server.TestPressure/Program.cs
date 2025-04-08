@@ -1,9 +1,6 @@
 ﻿
 using Geek.Server.Core.Actors;
 using Geek.Server.TestPressure.Logic;
-using PolymorphicMessagePack; 
-using System.Net.WebSockets;
-using System.Text;
 
 namespace Geek.Server.TestPressure
 {
@@ -32,8 +29,8 @@ namespace Geek.Server.TestPressure
             //}
             //return;
 
-            PolymorphicRegister.Load();
-            PolymorphicResolver.Instance.Init();
+            // PolymorphicRegister.Load();
+            // PolymorphicResolver.Instance.Init();
             LogManager.Configuration = new XmlLoggingConfiguration("Configs/test_log.config");
 
             TestSettings.Load("Configs/test_config.json");

@@ -23,4 +23,8 @@
 		<ProjectReference Include="..\Geek.Server.Core\Geek.Server.Core.csproj" />
 	</ItemGroup>
 
+	<ItemGroup>
+	  <Folder Include="Configs\Data\" />
+	</ItemGroup>
+
 </Project>

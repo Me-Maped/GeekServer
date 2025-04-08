@@ -1,11 +1,7 @@
-﻿using Geek.Server.Core.Serialize;
-using MessagePack;
-using PolymorphicMessagePack;
+﻿using System.Buffers;
 using System.Collections.Concurrent;
-using System.Diagnostics;
-using System.IO;
 using System.Net.WebSockets;
-using static System.Runtime.InteropServices.JavaScript.JSType;
+using Geek.Server.Core.Hotfix;
 
 namespace Geek.Server.Core.Net.Websocket
 {
@@ -15,7 +11,14 @@ namespace Geek.Server.Core.Net.Websocket
         WebSocket webSocket;
         readonly Action<Message> onMessage;
         protected readonly ConcurrentQueue<Message> sendQueue = new();
-        protected readonly SemaphoreSlim newSendMsgSemaphore = new(0); 
+        protected readonly SemaphoreSlim newSendMsgSemaphore = new(0);
+
+        // 保持原有字段基础上增加TCP通道类似的功能字段
+        protected long lastReviceTime = 0;
+        protected int lastOrder = 0;
+        
+        private const int MAX_RECV_SIZE = 1024 * 1024 * 5;
+        private const int HEADER_LEN = 20; // 添加消息头长度常量
 
         public WebSocketChannel(WebSocket webSocket, string remoteAddress, Action<Message> onMessage = null)
         {
@@ -60,89 +63,135 @@ namespace Geek.Server.Core.Net.Websocket
         {
             try
             {
-                var array = new object[2];
                 var closeToken = closeSrc.Token;
                 while (!closeToken.IsCancellationRequested)
                 {
                     await newSendMsgSemaphore.WaitAsync(closeToken);
-
                     if (!sendQueue.TryDequeue(out var message))
-                    {
                         continue;
-                    }
-                    array[0] = message.MsgId;
-                    array[1] = message;
-                    //这里为了应对前端是js等不方便处理多态的情况 
-                    var data = MessagePackSerializer.Serialize(array, MessagePackSerializerOptions.Standard);
-#if DEBUG
-                    LOGGER.Info("发送消息:" + MessagePackSerializer.ConvertToJson(data));
-#endif
-                    await webSocket.SendAsync(data, WebSocketMessageType.Binary, true, closeToken);
+                    await webSocket.SendAsync(SetMessageSpan(message), WebSocketMessageType.Binary, true, closeToken);
                 }
             }
             catch
             {
-
             }
         }
 
-        Message DeserializeMsg(MemoryStream stream)
+        private ArraySegment<byte> SetMessageSpan(Message message)
         {
-            var data = stream.GetBuffer();
-            var reader = new MessagePackReader(new ReadOnlyMemory<byte>(data, 0, (int)stream.Length));
-            Type type = null;
-            if (reader.NextMessagePackType == MessagePackType.Array)
-            {
-                var count = reader.ReadArrayHeader();
-                if (count != 2)
-                    throw new MessagePackSerializationException("Invalid polymorphic array count");
-                if (reader.NextMessagePackType == MessagePackType.Integer)
-                {
-                    var typeId = reader.ReadInt32();
-                    if (!PolymorphicTypeMapper.TryGet(typeId, out type))
-                        throw new MessagePackSerializationException($"Cannot find Type Id: {typeId} registered in {nameof(PolymorphicTypeMapper)}");
-                }
-            }
-            else
-            {
-                throw new MessagePackSerializationException("不是正确的序列化格式...");
-            }
-
-            return MessagePackSerializer.Deserialize(type, ref reader, MessagePackSerializerOptions.Standard) as Message;
+            var bytes = message.Body;
+            int len = HEADER_LEN + bytes.Length;
+            Span<byte> span = stackalloc byte[len];
+            int offset = 0;
+            span.WriteInt(len, ref offset);
+            span.WriteLong(DateTime.Now.Ticks, ref offset);
+            span.WriteInt(message.UniId, ref offset);
+            span.WriteInt(message.MsgId, ref offset);
+            span.WriteBytesWithoutLength(bytes, ref offset);
+            return new ArraySegment<byte>(span.ToArray());
         }
 
         async Task DoRevice()
         {
             var stream = new MemoryStream();
             var buffer = new ArraySegment<byte>(new byte[2048]);
-
             var closeToken = closeSrc.Token;
-            while (!closeToken.IsCancellationRequested)
+
+            try
             {
-                int len = 0;
-                WebSocketReceiveResult result;
-                stream.SetLength(0);
-                stream.Seek(0, SeekOrigin.Begin);
-                do
+                while (!closeToken.IsCancellationRequested)
                 {
-                    result = await webSocket.ReceiveAsync(buffer, closeToken);
-                    len += result.Count;
-                    stream.Write(buffer.Array, buffer.Offset, result.Count);
-                } while (!result.EndOfMessage);
+                    stream.SetLength(0);
+                    stream.Seek(0, SeekOrigin.Begin);
+                    WebSocketReceiveResult result;
+                    do
+                    {
+                        result = await webSocket.ReceiveAsync(buffer, closeToken);
+                        stream.Write(buffer.Array, buffer.Offset, result.Count);
+                    } while (!result.EndOfMessage);
 
-                if (result.MessageType == WebSocketMessageType.Close)
-                    break;
+                    if (result.MessageType == WebSocketMessageType.Close)
+                        break;
 
-                stream.Seek(0, SeekOrigin.Begin);
-                //这里默认用多态类型的反序列方式，里面做了兼容处理 
-                var message = DeserializeMsg(stream);// Serializer.Deserialize<Message>(stream);
-
-#if DEBUG
-                LOGGER.Info("收到消息:" +message.GetType().Name+"  " + MessagePackSerializer.SerializeToJson(message));
-#endif
-                onMessage(message);
+                    // 添加类似TCP通道的消息解析
+                    var readOnlySeq = new ReadOnlySequence<byte>(stream.GetBuffer(), 0, (int)stream.Length);
+                    if (TryParseMessage(ref readOnlySeq, out var message))
+                    {
+                        onMessage(message);
+                    }
+                }
             }
-            stream.Close();
+            finally
+            {
+                stream.Close();
+            }
+        }
+        
+        bool CheckMsgLen(int msgLen)
+        {
+            if (msgLen < 20 || msgLen > MAX_RECV_SIZE)
+            {
+                LOGGER.Error($"非法消息长度:{msgLen}");
+                return false;
+            }
+            return true;
+        }
+
+        // 新增与TCP通道一致的校验方法
+        public bool CheckMagicNumber(int order, int msgLen)
+        {
+            order ^= 0x1234 << 8;
+            order ^= msgLen;
+
+            if (lastOrder != 0 && order != lastOrder + 1)
+            {
+                LOGGER.Error("包序列出错, order=" + order + ", lastOrder=" + lastOrder);
+                return false;
+            }
+
+            lastOrder = order;
+            return true;
+        }
+        
+        public bool CheckTime(long time)
+        {
+            if (lastReviceTime > time)
+            {
+                LOGGER.Error($"时间戳异常 time:{time} lastTime:{lastReviceTime}");
+                return false;
+            }
+            lastReviceTime = time;
+            return true;
+        }
+
+        // 新增消息解析方法（与TCP通道保持一致）
+        protected virtual bool TryParseMessage(ref ReadOnlySequence<byte> input, out Message msg)
+        {
+            // 与TcpChannel完全一致的解析逻辑
+            msg = Message.Create();
+            var reader = new SequenceReader<byte>(input);
+
+            if (!reader.TryReadBigEndian(out int msgLen) || !CheckMsgLen(msgLen))
+                return false;
+
+            if (reader.Remaining < msgLen - 4)
+                return false;
+
+            if (!reader.TryReadBigEndian(out long time) ||
+                !reader.TryReadBigEndian(out int order) ||
+                !reader.TryReadBigEndian(out int msgId))
+                return false;
+
+            if (!CheckTime(time) || !CheckMagicNumber(order, msgLen) || !HotfixMgr.IsMsgContain(msgId))
+                throw new Exception("消息校验失败");
+
+            int bodyLen = msgLen - HEADER_LEN;
+            msg.Body = input.Slice(reader.Position, bodyLen).ToArray();
+            msg.MsgId = msgId;
+            msg.UniId = order;
+
+            input = input.Slice(input.GetPosition(msgLen));
+            return true;
         }
 
         public override void Write(Message msg)

@@ -15,8 +15,9 @@ namespace Server.Logic.Logic.Login
     {
         private static readonly Logger Log = LogManager.GetCurrentClassLogger();
 
-        public async Task OnLogin(NetChannel channel, ReqLogin reqLogin)
+        public async Task OnLogin(NetChannel channel, Message msg)
         {
+            var reqLogin = msg.Deserialize<ReqLogin>();
             if (string.IsNullOrEmpty(reqLogin.UserName))
             {
                 channel.Write(null, reqLogin.UniId, StateCode.AccountCannotBeNull);
@@ -55,7 +56,7 @@ namespace Server.Logic.Logic.Login
             var roleComp = await ActorMgr.GetCompAgent<RoleCompAgent>(roleId);
             //从登录线程-->调用Role线程 所以需要入队
             var resLogin = await roleComp.OnLogin(reqLogin, isNewRole);
-            channel.Write(resLogin, reqLogin.UniId, StateCode.Success);
+            channel.Write(Message.Create(resLogin), reqLogin.UniId, StateCode.Success);
 
             //加入在线玩家
             var serverComp = await ActorMgr.GetCompAgent<ServerCompAgent>();
