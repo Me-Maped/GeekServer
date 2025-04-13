@@ -55,11 +55,6 @@ namespace Geek.Server.App.Common
                 LogManager.Configuration = new XmlLoggingConfiguration("Configs/app_log.config");
                 LogManager.AutoShutdown = false;
 
-                // TODO remove
-                // PolymorphicTypeMapper.Register(typeof(AppStartUp).Assembly); //app
-                // PolymorphicRegister.Load();
-                // PolymorphicResolver.Instance.Init(); 
-
                 //mongodb bson
                 BsonClassMapHelper.SetConvention();
                 BsonClassMapHelper.RegisterAllClass(typeof(ReqLogin).Assembly);

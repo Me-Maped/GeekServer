@@ -26,8 +26,6 @@ namespace Server.Logic.Common
                 ActorMgr.ClearAgent();
                 return true;
             }
-            // TODO remove
-            // PolymorphicTypeMapper.Register(this.GetType().Assembly);
             HotfixMgr.SetMsgGetter(PBHelper.Get);
             HotfixMgr.SetMsgContainer(PBHelper.Contain);
 
@@ -36,9 +34,9 @@ namespace Server.Logic.Common
             await HttpServer.Start(Settings.HttpPort);
 
             Log.Info("load config data");
-            (bool success, string msg) = GameDataManager.ReloadAll();
-            if (!success)
-                throw new Exception($"载入配置表失败... {msg}");
+            var result = await GameDataManager.ReloadAll();
+            if (!result.Item1)
+                throw new Exception($"载入配置表失败... {result.Item2}");
 
             GlobalTimer.Start();
             await CompRegister.ActiveGlobalComps();
