@@ -24,7 +24,7 @@ namespace Geek.Server.Core.Net.Http
                 foreach (var keyValuePair in context.Request.Query)
                     paramMap.Add(keyValuePair.Key, keyValuePair.Value[0]);
 
-                context.Response.Headers.Add("content-type", "text/html;charset=utf-8");
+                context.Response.Headers.Append("content-type", "text/html;charset=utf-8");
                 if (context.Request.Method.Equals("POST"))
                 {
                     var headCType = context.Request.ContentType;
