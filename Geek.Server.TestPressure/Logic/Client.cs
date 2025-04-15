@@ -91,17 +91,17 @@ namespace Geek.Server.TestPressure.Logic
             req.UserName = "name" + id;
             req.Device = new Random().NextInt64().ToString();
             req.Platform = "android";
-            return SendMsgAndWaitBack(Message.Create(req));
+            return SendMsgAndWaitBack(Message.Create(3012,req));
         }
 
         private Task ReqBagInfo()
         {
-            return SendMsgAndWaitBack(Message.Create(new ReqBagInfo()));
+            return SendMsgAndWaitBack(Message.Create(3001,new ReqBagInfo()));
         }
 
         private Task ReqComposePet()
         {
-            return SendMsgAndWaitBack(Message.Create(new ReqComposePet{ FragmentId = 1000 }));
+            return SendMsgAndWaitBack(Message.Create(3003,new ReqComposePet{ FragmentId = 1000 }));
         }
          
         async Task<bool> SendMsgAndWaitBack(Message msg)

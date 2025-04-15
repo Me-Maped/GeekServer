@@ -1,5 +1,6 @@
 ﻿
 using Geek.Server.Core.Actors;
+using Geek.Server.Core.Hotfix;
 using Geek.Server.TestPressure.Logic;
 
 namespace Geek.Server.TestPressure
@@ -29,8 +30,6 @@ namespace Geek.Server.TestPressure
             //}
             //return;
 
-            // PolymorphicRegister.Load();
-            // PolymorphicResolver.Instance.Init();
             LogManager.Configuration = new XmlLoggingConfiguration("Configs/test_log.config");
 
             TestSettings.Load("Configs/test_config.json");

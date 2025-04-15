@@ -28,12 +28,12 @@ namespace Geek.Server.Core.Net.Tcp
         {
             if (msg == null)
                 return;
-
-           // LOGGER.Debug($"-------------收到消息{msg.MsgId} {msg.GetType()}");
+            
+            LOGGER.Debug($"-------------收到消息{msg.MsgId} {msg.GetType()}");
             var handler = HotfixMgr.GetTcpHandler(msg.MsgId);
             if (handler == null)
             {
-                LOGGER.Error($"找不到[{msg.MsgId}][{msg.GetType()}]对应的handler");
+                LOGGER.Error($"找不到[{msg.MsgId}][{msg.MsgId}]对应的handler");
                 return;
             }
             handler.Msg = msg;

@@ -172,9 +172,11 @@ namespace Geek.Server.Core.Hotfix
         {
             var attribute = (MsgMapping)type.GetCustomAttribute(typeof(MsgMapping), true);
             if (attribute == null) return false;
-            var msgIdField = attribute.Msg.GetField(KEY, BindingFlags.Static | BindingFlags.Public);
-            if (msgIdField == null) return false;
-            int msgId = (int)msgIdField.GetValue(null);
+            var msgType = attribute.Msg.GetType();
+            // var msgIdField = attribute.Msg.GetField(KEY, BindingFlags.Static | BindingFlags.Public);
+            // if (msgIdField == null) return false;
+            // int msgId = (int)msgIdField.GetValue(null);
+            int msgId = HotfixMgr.GetMsgCmd(msgType);
             if (!tcpHandlerMap.ContainsKey(msgId))
             {
                 tcpHandlerMap.Add(msgId, type);
