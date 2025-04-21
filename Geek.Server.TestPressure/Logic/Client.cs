@@ -108,7 +108,7 @@ namespace Geek.Server.TestPressure.Logic
         {
             msg.UniId = (int)id*10000 +  msgUniId++;
             Log.Info($"{id} 发送消息:{JsonConvert.SerializeObject(msg)}");
-            var awaiter = msgWaiter.StartWait(msg.UniId,  msg.GetType().Name); 
+            var awaiter = msgWaiter.StartWait(msg.UniId,msg.MsgId); 
             netChannel.Write(msg);
             return await awaiter;
         }
@@ -117,8 +117,6 @@ namespace Geek.Server.TestPressure.Logic
 
         public void OnRevice(Message msg)
         {
-            Log.Info($"收到消息:{msg.MsgId} {PBHelper.GetType(msg.MsgId)}"); 
-
             if (msg.MsgId == CMD.ResErrorCode)
             {
                 ResErrorCode errMsg = msg.Deserialize<ResErrorCode>();
@@ -140,8 +138,8 @@ namespace Geek.Server.TestPressure.Logic
             }
             else
             {
-
-                //Log.Info($"{id} 收到消息:{JsonConvert.SerializeObject(msg)}");
+                msgWaiter.EndWait(msg.UniId);
+                Log.Info($"{id} 收到消息:{JsonConvert.SerializeObject(msg)}");
             }
         }
     }

@@ -15,12 +15,12 @@ namespace Geek.Server.TestPressure.Logic
             public bool GetResult() => result;
             public Awaiter GetAwaiter() => this;
             int uid;
-            string msg;
+            int msgId;
             bool cmp = false;
-            public Awaiter(int uid,string msg)
+            public Awaiter(int uid,int msgId)
             {
                 this.uid = uid;
-                this.msg = msg;
+                this.msgId = msgId;
                 timer = new Timer(TimeOut, null, 10000, -1);
             }
 
@@ -49,7 +49,7 @@ namespace Geek.Server.TestPressure.Logic
 
             void TimeOut(object state)
             {
-                Log.Error($"等待消息超时:{uid} {msg} {cmp}");
+                Log.Error($"等待消息超时:{uid} {msgId} {cmp}");
                 Complete(false); 
             }
         }
@@ -70,14 +70,14 @@ namespace Geek.Server.TestPressure.Logic
             waitDic.Clear();
         }
 
-        public Awaiter StartWait(int uniId,string msg)
+        public Awaiter StartWait(int uniId,int msgId)
         {
             Awaiter waiter = null;
             lock (waitDic)
             {
                 if (!waitDic.ContainsKey(uniId))
                 {
-                    waiter = new Awaiter(uniId,msg);
+                    waiter = new Awaiter(uniId,msgId);
                     waitDic.Add(uniId, waiter);
                 }
                 else

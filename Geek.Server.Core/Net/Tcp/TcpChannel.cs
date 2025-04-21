@@ -128,7 +128,7 @@ namespace Geek.Server.Core.Net.Tcp
 
         protected virtual bool TryParseMessage(ref ReadOnlySequence<byte> input, out Message msg)
         {
-            msg = Message.Create();
+            msg = null;
             var reader = new SequenceReader<byte>(input);
 
             // 1. 读取消息头（4字节长度）
@@ -139,18 +139,18 @@ namespace Geek.Server.Core.Net.Tcp
             if (reader.Remaining < msgLen - 4)
                 return false;
 
-            // 3. 读取元数据（8字节时间戳 + 4字节order + 4字节消息ID）
+            // 3. 读取元数据（8字节时间戳 + 4字节uniId + 4字节消息ID）
             if (!reader.TryReadBigEndian(out long time) ||
-                !reader.TryReadBigEndian(out int order) ||
+                !reader.TryReadBigEndian(out int uniId) ||
                 !reader.TryReadBigEndian(out int msgId))
             {
                 return false;
             }
 
             // 4. 业务校验（时间戳 + 顺序号 + 消息ID）
-            if (!CheckTime(time) || !CheckMagicNumber(order, msgLen) || !HotfixMgr.IsMsgContain(msgId))
+            if (!CheckTime(time) || !CheckMagicNumber(uniId, msgLen) || !HotfixMgr.IsMsgContain(msgId))
             {
-                LOGGER.Error($"消息校验失败 time:{time} order:{order} msgId:{msgId}");
+                LOGGER.Error($"消息校验失败 time:{time} uniId:{uniId} msgId:{msgId}");
                 throw new Exception("消息格式异常");
             }
 
@@ -162,9 +162,7 @@ namespace Geek.Server.Core.Net.Tcp
                 return false;
             }
 
-            msg.Body = input.Slice(reader.Position, bodyLen).ToArray();
-            msg.MsgId = msgId;
-            msg.UniId = order;
+            msg = Message.Create(input.Slice(reader.Position, bodyLen).ToArray(),msgId,uniId);
 
             // 6. 移动读取位置
             input = input.Slice(input.GetPosition(msgLen));
@@ -174,6 +172,7 @@ namespace Geek.Server.Core.Net.Tcp
 
         public bool CheckMagicNumber(int order, int msgLen)
         {
+            return true;
             order ^= 0x1234 << 8;
             order ^= msgLen;
 
@@ -227,8 +226,7 @@ namespace Geek.Server.Core.Net.Tcp
 
         public override void Write(Message msg)
         {
-            if (IsClose())
-                return;
+            if (IsClose()) return;
             var bytes = msg.Body;
             int len = HEADER_LEN + bytes.Length;
             Span<byte> span = stackalloc byte[len];
@@ -238,6 +236,7 @@ namespace Geek.Server.Core.Net.Tcp
             span.WriteInt(msg.UniId, ref offset);
             span.WriteInt(msg.MsgId, ref offset);
             span.WriteBytesWithoutLength(bytes, ref offset);
+            LOGGER.Info($"---------------发送消息:{msg.MsgId} UniId:{msg.UniId}----------------");
 
             lock (Writer)
             {

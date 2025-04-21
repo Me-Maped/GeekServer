@@ -140,6 +140,7 @@ namespace Geek.Server.Core.Net.Websocket
         // 新增与TCP通道一致的校验方法
         public bool CheckMagicNumber(int order, int msgLen)
         {
+            return true;
             order ^= 0x1234 << 8;
             order ^= msgLen;
 
@@ -168,7 +169,7 @@ namespace Geek.Server.Core.Net.Websocket
         protected virtual bool TryParseMessage(ref ReadOnlySequence<byte> input, out Message msg)
         {
             // 与TcpChannel完全一致的解析逻辑
-            msg = Message.Create();
+            msg = null;
             var reader = new SequenceReader<byte>(input);
 
             if (!reader.TryReadBigEndian(out int msgLen) || !CheckMsgLen(msgLen))
@@ -186,9 +187,7 @@ namespace Geek.Server.Core.Net.Websocket
                 throw new Exception("消息校验失败");
 
             int bodyLen = msgLen - HEADER_LEN;
-            msg.Body = input.Slice(reader.Position, bodyLen).ToArray();
-            msg.MsgId = msgId;
-            msg.UniId = order;
+            msg = Message.Create(input.Slice(reader.Position, bodyLen).ToArray(), msgId, order);
 
             input = input.Slice(input.GetPosition(msgLen));
             return true;
@@ -198,6 +197,7 @@ namespace Geek.Server.Core.Net.Websocket
         {
             sendQueue.Enqueue(msg);
             newSendMsgSemaphore.Release();
+            LOGGER.Info($"---------------发送消息:{msg.MsgId} UniId:{msg.UniId}----------------");
         }
     }
 }

@@ -12,7 +12,7 @@ namespace Geek.Server.Core.Net.Tcp
 
         public override async Task OnConnectedAsync(ConnectionContext connection)
         {
-            LOGGER.Debug($"{connection.RemoteEndPoint?.ToString()} 链成功");
+            LOGGER.Debug($"{connection.RemoteEndPoint} 链成功");
             NetChannel channel = null;
             channel = new TcpChannel(connection, async (msg) => await Dispatcher(channel, msg));
             await channel.StartAsync();
@@ -29,11 +29,11 @@ namespace Geek.Server.Core.Net.Tcp
             if (msg == null)
                 return;
             
-            LOGGER.Debug($"-------------收到消息{msg.MsgId} {msg.GetType()}");
+            LOGGER.Debug($"-------------收到消息{msg.MsgId},uniId:{msg.UniId}-----------");
             var handler = HotfixMgr.GetTcpHandler(msg.MsgId);
             if (handler == null)
             {
-                LOGGER.Error($"找不到[{msg.MsgId}][{msg.MsgId}]对应的handler");
+                LOGGER.Error($"找不到[{msg.MsgId}]对应的handler");
                 return;
             }
             handler.Msg = msg;

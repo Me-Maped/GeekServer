@@ -43,17 +43,22 @@ public class Message : IReference
         Body = null;
     }
     
-    public static Message Create(IMessage msg)
+    public static Message Create(IMessage msg,int uniId = -1)
     {
         var newMsg = ReferencePool.Acquire<Message>();
         newMsg.Body = msg.ToByteArray();
         newMsg.MsgId = HotfixMgr.GetMsgCmd(msg.GetType());
+        newMsg.UniId = uniId;
         return newMsg;
     }
 
-    public static Message Create()
+    public static Message Create(byte[] body, int msgId, int uniId)
     {
-        return ReferencePool.Acquire<Message>();
+        var newMsg = ReferencePool.Acquire<Message>();
+        newMsg.Body = body;
+        newMsg.MsgId = msgId;
+        newMsg.UniId = uniId;
+        return newMsg;
     }
     
     [Obsolete("Only for test client")]
