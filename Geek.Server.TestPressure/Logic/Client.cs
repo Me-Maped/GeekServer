@@ -44,7 +44,7 @@ namespace Geek.Server.TestPressure.Logic
                 if (ws.State == WebSocketState.Open)
                 {
                     Log.Info($"Connected to {TestSettings.Ins.webSocketServerUrl}");
-                    netChannel = new WebSocketChannel(ws, TestSettings.Ins.webSocketServerUrl, OnRevice);
+                    netChannel = new ClientWebsocketChannel(ws, TestSettings.Ins.webSocketServerUrl, OnRevice);
                     _ = netChannel.StartAsync();
                 }
                 else

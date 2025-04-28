@@ -1,13 +1,14 @@
-﻿using System.Buffers;
+using System.Buffers;
 using System.Collections.Concurrent;
 using System.Net.WebSockets;
 using Geek.Server.Core.Hotfix;
+using Geek.Server.Core.Net;
 
-namespace Geek.Server.Core.Net.Websocket
+namespace Geek.Server.TestPressure.Logic;
+
+public class ClientWebsocketChannel : NetChannel
 {
-    public class WebSocketChannel : NetChannel
-    {
-        static readonly NLog.Logger LOGGER = NLog.LogManager.GetCurrentClassLogger();
+    static readonly NLog.Logger LOGGER = NLog.LogManager.GetCurrentClassLogger();
         WebSocket webSocket;
         readonly Action<Message> onMessage;
         protected readonly ConcurrentQueue<Message> sendQueue = new();
@@ -20,7 +21,7 @@ namespace Geek.Server.Core.Net.Websocket
         private const int MAX_RECV_SIZE = 1024 * 1024 * 5;
         private const int HEADER_LEN = 20; // 添加消息头长度常量
 
-        public WebSocketChannel(WebSocket webSocket, string remoteAddress, Action<Message> onMessage = null)
+        public ClientWebsocketChannel(WebSocket webSocket, string remoteAddress, Action<Message> onMessage = null)
         {
             this.RemoteAddress = remoteAddress;
             this.webSocket = webSocket;
@@ -186,9 +187,12 @@ namespace Geek.Server.Core.Net.Websocket
                 !reader.TryReadBigEndian(out int order) ||
                 !reader.TryReadBigEndian(out int msgId))
                 return false;
-
-            if (!CheckTime(time) || !CheckMagicNumber(order, msgLen) || !HotfixMgr.IsMsgContain(msgId))
+            
+            if(!PBHelper.Contain(msgId))
                 return false;
+
+            if (!CheckTime(time) || !CheckMagicNumber(order, msgLen))
+                throw new Exception("消息校验失败");
 
             int bodyLen = msgLen - HEADER_LEN;
             msg = Message.Create(input.Slice(reader.Position, bodyLen).ToArray(), msgId, order);
@@ -203,5 +207,4 @@ namespace Geek.Server.Core.Net.Websocket
             newSendMsgSemaphore.Release();
             LOGGER.Info($"---------------发送消息:{msg.MsgId} UniId:{msg.UniId}----------------");
         }
-    }
 }

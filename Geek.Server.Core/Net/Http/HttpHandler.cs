@@ -103,7 +103,7 @@ namespace Geek.Server.Core.Net.Http
                     return;
                 }
 
-                var ret = await Task.Run(() => { return handler.Action(ip, url, paramMap); });
+                var ret = await Task.Run(() => handler.Action(ip, url, paramMap));
                 LOGGER.Warn("http result:" + ret);
                 await context.Response.WriteAsync(ret);
             }

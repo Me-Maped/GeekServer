@@ -151,7 +151,7 @@ namespace Geek.Server.Core.Net.Tcp
             if (!CheckTime(time) || !CheckMagicNumber(uniId, msgLen) || !HotfixMgr.IsMsgContain(msgId))
             {
                 LOGGER.Error($"消息校验失败 time:{time} uniId:{uniId} msgId:{msgId}");
-                throw new Exception("消息格式异常");
+                return false;
             }
 
             // 5. 读取消息体（总长度 - 头部长度）
