@@ -3,6 +3,14 @@
 GeekServer 是一个开源的[分区分服](https://mp.weixin.qq.com/s?__biz=MzI3MTQ1NzU2NA==&mid=2247483884&idx=1&sn=3547c769a300f1d82cc04e9b1852c6d5&chksm=eac0cd9fddb7448997e38a74e2d26bde259cd2127583e31bc488511bc1fdcd9f35caff27d4a3&scene=21#wechat_redirect)的游戏服务器框架，采用 C# .Netcore 开发，开发效率高，性能强，跨平台，并内置不停服热更新机制。可以满足绝大部分游戏类型的需求，特别是和 Unity3D 协同开发更佳。  
 **设计理念:大道至简，以简化繁**
 
+***
+该工程基于[GeekServer](https://github.com/leeveel/GeekServer.git)主分支开发，主要做了以下改动：
+1. 改为Protobuf作为序列化协议
+2. 使用Luban作为数据配置中心（保持与客户端一致的工具链）
+3. 工程升级到.net8.0（与工具链一致）
+4. 修改入口结构（兼容Mac开发）
+***
+
 # GeekServer 功能：
 
 ### 1.跨平台
@@ -45,23 +53,20 @@ Actor 模型本身是存在死锁的情况，且不容易被发现。GeekServer 
 
 以功能系统级别的粒度，定期剔除内存中不活跃的玩家数据，尽最大可能减少服务器内存开销。
 
-### 11.高效的通信协议(基于 MessagePack)
+### 11.跨语言与平台的通信协议(基于 Protobuf)
 
-[Geek.MsgPackTool](https://github.com/leeveel/Geek.MsgPackTool) [MessagePack]对多态支持不够友好，GeekServer 提供了工具来生成多态注册信息，序列化和反序列化效率极高，同时序列化之后的数据极小，数据传输效率很高。[了解更多](https://github.com/leeveel/GeekServer/blob/main/Docs/%E5%85%B3%E4%BA%8E%E5%8D%8F%E8%AE%AE.md)
 
-### 12.一键导表工具(GeekConfig)
+### 12.多功能导表工具(Luban)
 
-[GeekConfig](https://github.com/leeveel/GeekConfig)是一个一键导表工具，将策划配置表，转化为二进制数据，并提供了方便快捷的 API 供游戏调用
 
 # 运行
 
-1. 安装[.Net 7.x](https://dotnet.microsoft.com/en-us/download/dotnet/7.0)
+1. 安装[.Net 8.x](https://dotnet.microsoft.com/en-us/download/dotnet/8.0)（与工具链SDK保持一致）
 2. 安装[mongodb](https://www.mongodb.com/try/download/community)
-3. 打开 git clone 本项目https://github.com/leeveel/GeekServer.git
-4. 运行 Tools/ExcelGen/ExcelToCode.exe 点击[服务器-ALL]导出配置表
-5. 用 VisualStudio2022 打开 GeekServer.sln 启动 GeekServer.App
-6. 启动 GeekServer.Test (一个 1000 人登录的 demo)
-7. 打开 UnityDemo 工程，打开 SampleScene，运行查看日志(**检查 Main Camera 上是否有脚本丢失，如果有请挂载 GameMain.cs**)
+3. 打开 git clone -b protobuf 本项目`https://github.com/Me-Maped/GeekServer.git`
+4. 用 VisualStudio2022 或 Rider 打开 GeekServer.sln 启动 GeekServerEntrance
+5. 测试时启动 Geek.Server.TestPressure (一个 1000 人登录的 demo)
+6. 打开 Unity 工程，运行查看日志(**由LoginLogicSys.cs控制发出登录与背包信息请求**)
 
 # 文档&例子&Demo
 
@@ -149,7 +154,3 @@ public class ServerCompAgent : StateCompAgent<ServerComp, ServerState>
 ```
 
 更多异步书写规范请参考微软官方文档[AsyncGuidance.md](https://github.com/davidfowl/AspNetCoreDiagnosticScenarios/blob/master/AsyncGuidance.md)
-
-# 推荐项目
-
-[GeekConfig](https://github.com/leeveel/GeekConfig) 一键从 Excel 中导出模板代码和二进制数据
